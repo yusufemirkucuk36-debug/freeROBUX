@@ -1,0 +1,396 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BEDAVARBX</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#100d20;color:white;font-family:Arial;text-align:center}
+header{background:linear-gradient(90deg,#5c16bb,#17102c);padding:18px;font-size:27px;font-weight:bold}
+button{border:0;border-radius:12px;padding:12px 15px;margin:5px;background:#7139d9;color:white;font-weight:bold;font-size:15px;cursor:pointer}
+button:disabled{opacity:.4}
+#top{display:flex;justify-content:space-between;gap:5px;padding:12px;background:#21183a;flex-wrap:wrap}
+#balance{color:#ffe04b;font-weight:bold}
+#menu,#game{padding:12px}
+.panel{background:#211936;border:1px solid #49346e;border-radius:16px;padding:14px;margin:12px auto;max-width:700px}
+.gamebtn{display:block;width:95%;max-width:520px;margin:10px auto;background:#30204e}
+.hidden{display:none!important}
+#message{min-height:28px;color:#ffe477;margin:8px}
+.small{font-size:12px;color:#c7b8e4}
+#eyesScreen{position:fixed;inset:0;background:black;z-index:20;display:none;align-items:center;justify-content:center;flex-direction:column}
+.eye{width:110px;height:65px;background:white;border-radius:50%;margin:18px;display:inline-block;position:relative;box-shadow:0 0 30px red}
+.eye:after{content:"";position:absolute;width:35px;height:35px;background:red;border-radius:50%;top:15px;left:38px;box-shadow:0 0 20px red}
+#neonCanvas{width:100%;max-width:650px;background:#090b20;border:3px solid #8c43ff;border-radius:12px;touch-action:none}
+.controls button{width:75px;height:55px;font-size:22px}
+.shopitem{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;background:#302348;padding:10px;border-radius:12px;margin:8px 0}
+input{padding:12px;border-radius:9px;border:0;width:130px;font-size:18px}
+#zombieCanvas{width:100%;max-width:650px;background:#171b25;border:3px solid #7b48d8;border-radius:12px;touch-action:none}
+.zcontrols button{min-width:65px;height:55px;font-size:20px}
+.worldgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.worldgrid button{padding:9px 2px;font-size:12px;margin:2px}
+</style>
+</head>
+<body>
+
+<header>😎 BEDAVARBX</header>
+<div id="top">
+ <span>👤 Bacon</span>
+ <span id="balance">R$: 0</span>
+</div>
+
+<div id="menu">
+ <div class="panel">
+  <h2>🔥 HOŞ GELDİN BACON!</h2>
+  <p>Hangi oyunu oynamak istersin?</p>
+  <p class="small">Sanal site bakiyesi gerçek Roblox Robux değildir.</p>
+ </div>
+
+ <button class="gamebtn" onclick="startGame('zombie')">🧟 ZOMBİ KIYAMETİ - 100 DÜNYA</button>
+ <button class="gamebtn" onclick="startGame('neon')">🌆 NEON ŞEHRİ: SON KAÇIŞ</button>
+ <button class="gamebtn" onclick="startGame('gta')">🚗 GTA 6 BANKA SOYGUNU</button>
+ <button class="gamebtn" onclick="startGame('balloon')">🎈 BALON PATLATMA</button>
+ <button class="gamebtn" onclick="startGame('67')">💀 67'Yİ YAKALA</button>
+ <button class="gamebtn" onclick="startGame('mole')">🐹 KÖSTEBEK YAKALAMA</button>
+ <button class="gamebtn" onclick="startGame('math')">🧠 20 ZOR MATEMATİK SORUSU</button>
+ <button class="gamebtn" onclick="startGame('mario')">🍄 BACON MACERASI</button>
+ <button class="gamebtn" onclick="showEyes()">👁️ DOORS EYES</button>
+
+ <div class="panel">
+  <h2>🤑 Robux Veren Oyunlar</h2>
+  <p>🎈 Kazan - Bedava Olarak Pop Kazan</p>
+  <button onclick="startGame('balloon')">OYNA</button>
+  <p class="small">Ödüller bu sitenin sanal oyun parasıdır.</p>
+  <button onclick="window.open('https://www.roblox.com/','_blank')">ROBLOX'A GİT</button>
+ </div>
+</div>
+
+<div id="game" class="hidden">
+ <button onclick="goHome()">⬅️ MENÜYE DÖN</button>
+ <h2 id="gameTitle"></h2>
+ <div id="gameArea" class="panel"></div>
+ <div id="message"></div>
+</div>
+
+<div id="eyesScreen">
+ <h1 style="color:red">👁️ EYES</h1>
+ <div><span class="eye"></span><span class="eye"></span></div>
+ <h2>SENİ GÖRÜYOR...</h2>
+ <button onclick="closeEyes()">KAÇ!</button>
+</div>
+
+<script>
+/* ORTAK BAKİYE VE KAYIT */
+let money=Number(localStorage.getItem("bedavaMoney")||0);
+let upgrades=JSON.parse(localStorage.getItem("bedavaUpgrades")||'{"shield":false,"speed":false,"costume":false}');
+let inventory=JSON.parse(localStorage.getItem("bedavaInventory")||'{"sword":false,"gun":false}');
+let zombieSave=JSON.parse(localStorage.getItem("zombieSave")||'{"world":1,"kills":0}');
+let rewarded=false,current="",points=0,question=0,gtaStep=0,enemyHP=10;
+let gameTimer=null,neon=null,zombie=null;
+
+function save(){
+ localStorage.setItem("bedavaMoney",money);
+ localStorage.setItem("bedavaUpgrades",JSON.stringify(upgrades));
+ localStorage.setItem("bedavaInventory",JSON.stringify(inventory));
+ localStorage.setItem("zombieSave",JSON.stringify(zombieSave));
+}
+function updateMoney(){
+ document.getElementById("balance").textContent="R$: "+money.toLocaleString("tr-TR");
+ save();
+}
+updateMoney();
+
+function goHome(){
+ clearInterval(gameTimer);gameTimer=null;
+ stopNeon();stopZombie();
+ document.getElementById("game").classList.add("hidden");
+ document.getElementById("menu").classList.remove("hidden");
+ document.getElementById("message").textContent="";
+}
+function startGame(name){
+ clearInterval(gameTimer);stopNeon();stopZombie();
+ current=name;rewarded=false;points=0;
+ document.getElementById("menu").classList.add("hidden");
+ document.getElementById("game").classList.remove("hidden");
+ document.getElementById("message").textContent="";
+ let a=document.getElementById("gameArea");
+ let t=document.getElementById("gameTitle");
+
+ if(name==="zombie"){
+  t.textContent="🧟 ZOMBİ KIYAMETİ";
+  zombieMenu();
+ }else if(name==="neon"){
+  t.textContent="🌆 NEON ŞEHRİ";
+  showNeon();
+ }else if(name==="balloon"){
+  t.textContent="🎈 BALON PATLATMA";
+  a.innerHTML='<h3>20 balon patlat!</h3><div id="count">0 / 20</div><button style="font-size:55px" onclick="popBalloon()">🎈</button>';
+ }else if(name==="67"){
+  t.textContent="💀 67’Yİ YAKALA";enemyHP=10;
+  a.innerHTML='<h3>67 karakterini 10 kez yakala!</h3><h1 id="hp">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</h1><button style="font-size:50px" onclick="shoot67()">💥 VUR</button>';
+ }else if(name==="mole"){
+  t.textContent="🐹 KÖSTEBEK";a.innerHTML='<h3>15 köstebek yakala!</h3><div id="count">0 / 15</div><button style="font-size:55px" onclick="hitMole()">🐹</button>';
+ }else if(name==="math"){
+  t.textContent="🧠 MATEMATİK";question=0;showQuestion();
+ }else if(name==="gta"){
+  t.textContent="🚗 GTA 6 BANKA SOYGUNU";gtaStep=0;showGTA();
+ }else if(name==="mario"){
+  t.textContent="🍄 BACON MACERASI";marioPosition=0;
+  a.innerHTML='<h3>Engelleri aş ve sona ulaş!</h3><div style="font-size:55px" id="bacon">🧑🏻‍🍳</div><div id="marioProgress">Yol: 0 / 10</div><button onclick="marioJump()">⬆️ ZIPLA</button>';
+ }
+}
+function reward(){
+ if(rewarded)return;
+ rewarded=true;money+=100000;updateMoney();
+ document.getElementById("gameArea").innerHTML='<h1>🏆 KAZANDIN!</h1><h2>+100.000 sanal R$</h2><button onclick="goHome()">MENÜYE DÖN</button>';
+}
+function popBalloon(){
+ if(rewarded)return;
+ points++;document.getElementById("count").textContent=points+" / 20";
+ if(points>=20)reward();
+}
+function shoot67(){
+ if(rewarded)return;
+ enemyHP--;
+ document.getElementById("hp").textContent="❤️".repeat(Math.max(0,enemyHP))+"🖤".repeat(10-Math.max(0,enemyHP));
+ if(enemyHP<=0)reward();
+}
+function hitMole(){
+ if(rewarded)return;
+ points++;document.getElementById("count").textContent=points+" / 15";
+ if(points>=15)reward();
+}
+
+/* MATEMATİK */
+const questions=[
+["12 x 12",144],["225 / 15",15],["19 x 7",133],["144 + 289",433],
+["900 - 467",433],["17 x 13",221],["625 / 25",25],["32 x 8",256],
+["999 + 111",1110],["45 x 12",540],["81 / 9",9],["23 x 11",253],
+["1000 - 375",625],["16 x 16",256],["72 / 8",9],["34 x 15",510],
+["250 + 750",1000],["21 x 19",399],["500 / 20",25],["125 x 8",1000]
+];
+function showQuestion(){
+ let q=questions[question];
+ document.getElementById("gameArea").innerHTML='<h2>Soru '+(question+1)+'/20</h2><h1>'+q[0]+' = ?</h1><input id="answer" type="number" placeholder="Cevap"><br><button onclick="checkAnswer()">CEVAPLA</button>';
+}
+function checkAnswer(){
+ if(Number(document.getElementById("answer").value)===questions[question][1]){
+  question++;if(question>=20)reward();else showQuestion();
+ }else document.getElementById("message").textContent="❌ Yanlış! Tekrar dene.";
+}
+
+/* GTA GÖREVİ */
+function showGTA(){
+ let s=[
+ ["🚗","Kaçış arabasını bul!","ARABAYI BUL"],
+ ["🏦","Bankaya gir!","BANKAYA GİR"],
+ ["💰","Kasayı aç!","KASAYI AÇ"],
+ ["🚨","Polis geliyor, kaç!","KAÇ"],
+ ["🏁","Görev tamamlandı!","ÖDÜLÜ AL"]
+ ][gtaStep];
+ document.getElementById("gameArea").innerHTML='<h1>'+s[0]+'</h1><h3>'+s[1]+'</h3><button onclick="nextGTA()">'+s[2]+'</button>';
+}
+function nextGTA(){gtaStep++;if(gtaStep>=5)reward();else showGTA()}
+
+/* BACON MACERASI */
+let marioPosition=0;
+function marioJump(){
+ marioPosition++;
+ document.getElementById("bacon").textContent=marioPosition%2?"🦸":"🧑🏻‍🍳";
+ document.getElementById("marioProgress").textContent="Yol: "+marioPosition+" / 10";
+ if(marioPosition>=10)reward();
+}
+
+/* EYES */
+function showEyes(){document.getElementById("eyesScreen").style.display="flex"}
+function closeEyes(){document.getElementById("eyesScreen").style.display="none"}
+
+/* ZOMBİ KIYAMETİ - 100 DÜNYA, HER DÜNYADA 100 ZOMBİ */
+function zombieMenu(){
+ let a=document.getElementById("gameArea");
+ a.innerHTML=`
+ <h2>🧟 ZOMBİ KIYAMETİ</h2>
+ <h3>Dünya ${zombieSave.world} / 100</h3>
+ <p>Toplam öldürülen: ${zombieSave.kills}</p>
+ <p>Her dünyada 100 zombi var!</p>
+ <button onclick="openWorld()">⚔️ DÜNYAYA GİR</button>
+ <h3>🌍 DÜNYALAR</h3>
+ <div class="worldgrid" id="worldGrid"></div>
+ <h3>🛒 SİLAH MAĞAZASI</h3>
+ <div class="shopitem"><span>🪵 Başlangıç sopası<br><b>Ücretsiz</b></span><b>SAHİPSİN</b></div>
+ <div class="shopitem"><span>⚔️ Kılıç<br><b>25.000 R$</b></span><button onclick="buyWeapon('sword',25000)">SATIN AL</button></div>
+ <div class="shopitem"><span>🔫 Silah<br><b>100.000 R$</b></span><button onclick="buyWeapon('gun',100000)">SATIN AL</button></div>
+ <div class="shopitem"><span>🛡️ Enerji Kalkanı<br><b>200.000 R$</b></span><button onclick="buyUpgrade('shield',200000)">SATIN AL</button></div>
+ <div class="shopitem"><span>⚡ Süper Hız<br><b>400.000 R$</b></span><button onclick="buyUpgrade('speed',400000)">SATIN AL</button></div>
+ <div class="shopitem"><span>😎 Neon Bacon Kostümü<br><b>1.000.000.000 R$</b></span><button onclick="buyUpgrade('costume',1000000000)">SATIN AL</button></div>`;
+ let grid=document.getElementById("worldGrid");
+ for(let i=1;i<=100;i++){
+  let b=document.createElement("button");
+  b.textContent=i<=zombieSave.world?"🌍 "+i:"🔒 "+i;
+  b.disabled=i>zombieSave.world;
+  b.onclick=()=>{zombieSave.world=i;save();openWorld()};
+  grid.appendChild(b);
+ }
+}
+function buyWeapon(key,price){
+ if(inventory[key]){document.getElementById("message").textContent="Bu silaha zaten sahipsin!";return}
+ if(money<price){document.getElementById("message").textContent="Yeterli paran yok!";return}
+ money-=price;inventory[key]=true;updateMoney();zombieMenu();
+ document.getElementById("message").textContent="🎉 Silah satın alındı!";
+}
+function buyUpgrade(key,price){
+ if(upgrades[key]){document.getElementById("message").textContent="Bu özellik zaten sende!";return}
+ if(money<price){document.getElementById("message").textContent="Yeterli paran yok!";return}
+ money-=price;upgrades[key]=true;updateMoney();zombieMenu();
+ document.getElementById("message").textContent="🎉 Yükseltme satın alındı!";
+}
+function openWorld(){
+ stopZombie();
+ let a=document.getElementById("gameArea");
+ a.innerHTML=`
+ <h3 id="worldTitle">🌍 Dünya ${zombieSave.world}</h3>
+ <p id="zombieCount">🧟 0 / 100 zombi</p>
+ <p id="playerHealth">❤️❤️❤️❤️❤️</p>
+ <canvas id="zombieCanvas" width="600" height="300"></canvas>
+ <div class="zcontrols">
+ <button id="zLeft">⬅️</button>
+ <button id="zAttack">⚔️</button>
+ <button id="zRight">➡️</button>
+ </div>
+ <p class="small">Sopayla başladın. Zombiler elleriyle saldırıyor!</p>
+ <button onclick="zombieMenu()">🌍 DÜNYA MENÜSÜ</button>`;
+ setupZombie();
+}
+function stopZombie(){
+ if(zombie&&zombie.frame)cancelAnimationFrame(zombie.frame);
+ zombie=null;
+}
+function setupZombie(){
+ const canvas=document.getElementById("zombieCanvas");
+ if(!canvas)return;
+ const ctx=canvas.getContext("2d");
+ zombie={
+  x:70,hp:5,kills:0,enemyX:500,enemyHP:2,
+  left:false,right:false,attack:false,lastHit:0,
+  frame:0,alive:true
+ };
+ let z=zombie;
+ function hold(id,key){
+  let b=document.getElementById(id);
+  b.addEventListener("pointerdown",e=>{e.preventDefault();z[key]=true});
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>z[key]=false));
+ }
+ hold("zLeft","left");hold("zRight","right");
+ document.getElementById("zAttack").addEventListener("pointerdown",e=>{e.preventDefault();attackZombie()});
+ function attackZombie(){
+  if(!z.alive||Date.now()-z.lastHit<350)return;
+  z.lastHit=Date.now();
+  if(inventory.gun){
+   z.enemyHP-=5;
+  }else if(inventory.sword){
+   z.enemyHP-=3;
+  }else{
+   z.enemyHP-=1;
+  }
+  if(z.enemyHP<=0){
+   z.kills++;zombieSave.kills++;save();
+   document.getElementById("zombieCount").textContent="🧟 "+z.kills+" / 100 zombi";
+   if(z.kills>=100){
+    z.alive=false;
+    if(zombieSave.world<100)zombieSave.world++;
+    money+=100000;updateMoney();save();
+    document.getElementById("gameArea").innerHTML=
+    '<h1>🏆 DÜNYA TEMİZLENDİ!</h1><h2>+100.000 sanal R$</h2><h3>Sonraki dünya açıldı!</h3><button onclick="zombieMenu()">DÜNYA MENÜSÜ</button>';
+    return;
+   }
+   z.enemyX=450+Math.random()*100;z.enemyHP=2;
+  }
+ }
+ window.attackZombie=attackZombie;
+ function frame(){
+  if(!zombie||!z.alive||current!=="zombie")return;
+  ctx.clearRect(0,0,600,300);
+  ctx.fillStyle="#242b35";ctx.fillRect(0,0,600,300);
+  ctx.fillStyle="#4a4e59";ctx.fillRect(0,255,600,45);
+  ctx.fillStyle="#343c49";
+  for(let i=0;i<6;i++)ctx.fillRect(i*110,210,60,45);
+  let speed=upgrades.speed?4:2.5;
+  if(z.left)z.x-=speed;if(z.right)z.x+=speed;
+  z.x=Math.max(15,Math.min(570,z.x));
+  if(z.enemyX>z.x+30)z.enemyX-=.55;
+  else if(z.enemyX<z.x-30)z.enemyX+=.55;
+  ctx.font="34px Arial";
+  ctx.fillText(upgrades.costume?"😎":"🥓",z.x,245);
+  ctx.fillText("🧟",z.enemyX,245);
+  ctx.font="14px Arial";ctx.fillStyle="white";
+  ctx.fillText("Zombi HP: "+Math.max(0,z.enemyHP),z.enemyX-15,195);
+  if(Math.abs(z.enemyX-z.x)<42&&Date.now()-z.lastHit>1100){
+   if(!upgrades.shield){
+    z.hp--;z.lastHit=Date.now();
+    document.getElementById("playerHealth").textContent="❤️".repeat(Math.max(0,z.hp))+"🖤".repeat(5-Math.max(0,z.hp));
+    if(z.hp<=0){
+     z.alive=false;
+     document.getElementById("gameArea").innerHTML='<h1>💀 YAKALANDIN!</h1><p>Bu dünyada '+z.kills+' zombi yendin.</p><button onclick="openWorld()">TEKRAR DENE</button><button onclick="zombieMenu()">MENÜ</button>';
+     return;
+    }
+   }
+  }
+  z.frame=requestAnimationFrame(frame);
+ }
+ frame();
+}
+
+/* NEON ŞEHRİ */
+function showNeon(){
+ document.getElementById("gameArea").innerHTML=`
+ <h3>💎 10 kristal topla ve çıkışa ulaş!</h3>
+ <canvas id="neonCanvas" width="600" height="300"></canvas>
+ <p id="neonInfo">Kristaller: 0 / 10</p>
+ <div class="controls">
+ <button id="leftBtn">⬅️</button><button id="jumpBtn">⬆️</button><button id="rightBtn">➡️</button>
+ </div>
+ <h3>🛒 NEON MAĞAZASI</h3>
+ <div class="shopitem"><span>🛡️ Enerji Kalkanı<br>200.000 R$</span><button onclick="buyUpgrade('shield',200000)">SATIN AL</button></div>
+ <div class="shopitem"><span>⚡ Süper Hız<br>400.000 R$</span><button onclick="buyUpgrade('speed',400000)">SATIN AL</button></div>
+ <div class="shopitem"><span>😎 Neon Bacon<br>1.000.000.000 R$</span><button onclick="buyUpgrade('costume',1000000000)">SATIN AL</button></div>`;
+ setupNeon();
+}
+function stopNeon(){if(neon&&neon.frame)cancelAnimationFrame(neon.frame);neon=null}
+function setupNeon(){
+ const c=document.getElementById("neonCanvas");if(!c)return;
+ const x=c.getContext("2d");
+ let n=neon={x:35,y:220,vy:0,ground:true,crystals:0,monster:520,items:[100,160,230,300,370,440,500,550,260,410],frame:0,keys:{}};
+ function bind(id,key){
+  let b=document.getElementById(id);
+  b.onpointerdown=e=>{e.preventDefault();if(key==="jump"){if(n.ground){n.vy=-11;n.ground=false}}else n.keys[key]=true};
+  b.onpointerup=b.onpointerleave=()=>n.keys[key]=false;
+ }
+ bind("leftBtn","left");bind("rightBtn","right");bind("jumpBtn","jump");
+ function frame(){
+  if(!neon||current!=="neon")return;
+  x.clearRect(0,0,600,300);x.fillStyle="#10132e";x.fillRect(0,0,600,300);
+  x.fillStyle="#34304d";x.fillRect(0,260,600,40);
+  if(n.keys.left)n.x-=upgrades.speed?5:3;
+  if(n.keys.right)n.x+=upgrades.speed?5:3;
+  n.x=Math.max(0,Math.min(570,n.x));n.vy+=.5;n.y+=n.vy;
+  if(n.y>=220){n.y=220;n.vy=0;n.ground=true}
+  n.monster-=.5;
+  x.font="30px Arial";x.fillStyle="#ffdf43";
+  n.items.forEach((v,i)=>{
+   if(v<0)return;
+   x.fillText("💎",v,240);
+   if(Math.abs(n.x-v)<20){n.items[i]=-1;n.crystals++}
+  });
+  x.fillText("👾",n.monster,230);x.fillText(upgrades.costume?"😎":"🥓",n.x,n.y+25);
+  document.getElementById("neonInfo").textContent="Kristaller: "+n.crystals+" / 10";
+  if(n.x>550&&n.crystals>=10){reward();return}
+  if(Math.abs(n.x-n.monster)<25&&!upgrades.shield){n.x=35;document.getElementById("message").textContent="👾 Gölge sana çarptı!"}
+  if(n.monster<0)n.monster=560;
+  n.frame=requestAnimationFrame(frame);
+ }
+ frame();
+}
+</script>
+</body>
+</html>
